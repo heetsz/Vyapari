@@ -80,7 +80,7 @@ const Login = () => {
                   />
                 </div>
               </div>
-              <button type='submit' className="btn flex">
+              <button type='submit' onClick={() => navigateTo('/dashboard')} className="btn flex">
                 <span>Login</span>
                 <AiOutlineSwapRight className='icon' />
               </button>
