@@ -135,9 +135,11 @@ const PlantStore = () => {
 
 
       await axios.post('http://localhost:3003/cart', {
-        username: {username},
+        username: username,
         pid: product.id,
-        quantity: existingItem ? existingItem.quantity + 1 : 1
+        quantity: existingItem ? existingItem.quantity + 1 : 1,
+        pname: product.name,
+        price: product.price
       });
 
 
@@ -166,8 +168,11 @@ const PlantStore = () => {
       const item = updatedCart.find(item => item.id === productId);
       if (item) {
         await axios.post('http://localhost:3003/cart', {
-          productId: productId,
-          quantity: item.quantity
+          username: username,
+          pid: item.id,
+          quantity: item.quantity,
+          pname: item.name,
+          price: item.price
         });
       } else {
         // If item was removed (quantity = 0)

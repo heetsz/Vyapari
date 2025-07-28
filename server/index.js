@@ -1,24 +1,53 @@
 const express = require('express');
 const app = express();
-const mysql = require('mysql');
+const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 
 app.use(cors());
 app.use(express.json());
 
-const db = mysql.createConnection({
-  user: 'root',
-  host: 'localhost',
-  password: '',
-  database: 'plantdb'
-});
-
-db.connect((err) => {
+const db = new sqlite3.Database('./plantdb.sqlite', (err) => {
   if (err) {
     console.error('Error connecting to the database:', err);
     process.exit(1); 
   } else {
-    console.log('Connected to the MySQL database');
+    console.log('Connected to the SQLite database');
+    
+    // Create tables if they don't exist
+    db.serialize(() => {
+      db.run(`CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE,
+        username TEXT UNIQUE,
+        password TEXT
+      )`);
+      
+      db.run(`CREATE TABLE IF NOT EXISTS employee (
+        empID TEXT PRIMARY KEY,
+        name TEXT,
+        phone TEXT,
+        role TEXT,
+        salary INTEGER
+      )`);
+      
+      db.run(`CREATE TABLE IF NOT EXISTS products (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        price REAL,
+        description TEXT,
+        image TEXT
+      )`);
+      
+      db.run(`CREATE TABLE IF NOT EXISTS orders (
+        oid INTEGER PRIMARY KEY AUTOINCREMENT,
+        quantity INTEGER,
+        pid INTEGER,
+        username TEXT,
+        pname TEXT,
+        price REAL,
+        stock INTEGER
+      )`);
+    });
   }
 });
 
@@ -31,7 +60,7 @@ app.post('/register', (req, res) => {
   const SQL = 'INSERT INTO users(email, username, password) VALUES (?, ?, ?)';
   const values = [Email, UserName, Password];
   
-  db.query(SQL, values, (err, results) => {
+  db.run(SQL, values, function(err) {
     if (err) {
       console.error('Error executing query:', err);
       res.status(500).send({ error: 'Database query error' });
@@ -47,7 +76,7 @@ app.post('/addEmployee', (req, res) => {
   const SQL = 'INSERT INTO employee VALUES (?, ?, ?, ?, ?)';
   const values = [empID, name, phone,role , salary];
   
-  db.query(SQL, values, (err, results) => {
+  db.run(SQL, values, function(err) {
     if (err) {
       console.error('Error executing query:', err);
       res.status(500).send({ error: 'Database query error' });
@@ -60,13 +89,13 @@ app.post('/addEmployee', (req, res) => {
 
 
 app.post('/login', (req, res)=>{
-  const sentloginUserName = req.body.LoginUserName
-  const sentLoginPassword = req.body.LoginPassword
+  const sentloginUserName = req.body.loginUserName
+  const sentLoginPassword = req.body.loginPassword
 
   const SQL = 'SELECT * FROM users WHERE username = ? AND password = ?'
   const values = [sentloginUserName, sentLoginPassword]
 
-  db.query(SQL, values, (err, results) => {
+  db.all(SQL, values, (err, results) => {
     if (err) {
       console.error('Error executing query:', err);
       res.status(500).send({ error: 'Database query error' });
@@ -83,7 +112,7 @@ app.post('/login', (req, res)=>{
 app.get('/employees', (req, res) => {
   const SQL = 'SELECT empID, name, phone, role, salary FROM employee';
 
-  db.query(SQL, (err, results) => {
+  db.all(SQL, (err, results) => {
     if (err) {
       console.error('Error fetching employees:', err);
       res.status(500).send({ error: 'Database query error' });
@@ -96,12 +125,12 @@ app.get('/employees', (req, res) => {
 app.get('/employees/salarySum', (req, res) => {
   const SQL = 'SELECT SUM(salary) AS totalSalary FROM employee';
 
-  db.query(SQL, (err, results) => {
+  db.get(SQL, (err, result) => {
     if (err) {
       console.error('Error fetching employees:', err);
       res.status(500).send({ error: 'Database query error' });
     } else {
-      res.send({ totalSalary: results[0].totalSalary });
+      res.send({ totalSalary: result.totalSalary });
     }
   });
 });
@@ -109,12 +138,12 @@ app.get('/employees/salarySum', (req, res) => {
 app.get('/employees/employeeCount', (req, res) => {
   const SQL = 'SELECT count(*) AS employeeSum FROM employee';
 
-  db.query(SQL, (err, results) => {
+  db.get(SQL, (err, result) => {
     if (err) {
       console.error('Error fetching employee count:', err);
       res.status(500).send({ error: 'Database query error' });
     } else {
-      res.send({ employeeSum: results[0].employeeSum });
+      res.send({ employeeSum: result.employeeSum });
     }
   });
 });
@@ -122,12 +151,12 @@ app.get('/employees/employeeCount', (req, res) => {
 app.get('/employees/userCount', (req, res) => {
   const SQL = 'SELECT count(*) AS userCount FROM users';
 
-  db.query(SQL, (err, results) => {
+  db.get(SQL, (err, result) => {
     if (err) {
       console.error('Error fetching employee count:', err);
       res.status(500).send({ error: 'Database query error' });
     } else {
-      res.send({ userCount: results[0].userCount });
+      res.send({ userCount: result.userCount });
     }
   });
 });
@@ -148,9 +177,9 @@ app.delete('/employees/:empID', async (req, res) => {
   try {
     // Using promise-based query for better error handling
     const result = await new Promise((resolve, reject) => {
-      db.query(SQL, [empID], (err, result) => {
+      db.run(SQL, [empID], function(err) {
         if (err) reject(err);
-        else resolve(result);
+        else resolve({ affectedRows: this.changes });
       });
     });
 
@@ -177,14 +206,14 @@ app.delete('/employees/:empID', async (req, res) => {
 
 
 app.get('/employees/sales', (req, res) => {
-  const SQL = 'SELECT SUM(price) from orders';
+  const SQL = 'SELECT SUM(price) AS totalSales from orders';
 
-  db.query(SQL, (err, results) => {
+  db.get(SQL, (err, result) => {
     if (err) {
       console.error('Error fetching sales:', err);
       res.status(500).send({ error: 'Database query error' });
     } else {
-      res.send({ sales: results[0]['SUM(price)'] });  // Adjust to match your result structure
+      res.send({ sales: result.totalSales });
     }
   });
 });
@@ -195,7 +224,7 @@ app.get('/employees/sales', (req, res) => {
 //   const SQL = 'INSERT INTO orders(quantity, pid) VALUES ( ?, ?)';
 //   const values = [quantity, pid];
   
-//   db.query(SQL, values, (err, results) => {
+//   db.run(SQL, values, function(err) {
 //     if (err) {
 //       console.error('Error executing query:', err);
 //       res.status(500).send({ error: 'Database query error' });
@@ -207,15 +236,15 @@ app.get('/employees/sales', (req, res) => {
 // });
 
 app.post('/cart', (req, res) => {
-  const {  quantity,pid, username } = req.body;
+  const {  quantity,pid, username, pname, price } = req.body;
 
   // Query to insert the order and get the username with the highest id in one go
   const SQL = `
-    INSERT INTO orders (quantity, pid, username) values (?, ?, ?)`;
+    INSERT INTO orders (quantity, pid, username, pname, price) values (?, ?, ?, ?, ?)`;
 
-  const values = [quantity, pid,username];
+  const values = [quantity, pid, username, pname, price];
 
-  db.query(SQL, values, (err, results) => {
+  db.run(SQL, values, function(err) {
     if (err) {
       console.error('Error executing query:', err);
       res.status(500).send({ error: 'Database query error' });
@@ -230,7 +259,7 @@ app.post('/cart', (req, res) => {
 app.get('/getcart', (req, res) => {
   const SQL = 'SELECT quantity, pname, price FROM orders';
 
-  db.query(SQL, (err, results) => {
+  db.all(SQL, (err, results) => {
     if (err) {
       console.error('Error fetching cart:', err);
       res.status(500).send({ error: 'Database query error' });
@@ -244,12 +273,12 @@ app.get('/getcart', (req, res) => {
 app.get('/username', (req, res) => {
   const SQL = 'SELECT username, id FROM users ORDER BY id DESC LIMIT 1; ';
 
-  db.query(SQL, (err, results) => {
+  db.get(SQL, (err, result) => {
     if (err) {
       console.error('Error fetching cart:', err);
       res.status(500).send({ error: 'Database query error' });
     } else {
-      res.send(results);
+      res.send([result]); // Wrap in array to maintain compatibility
     }
   });
 });
@@ -258,7 +287,7 @@ app.get('/username', (req, res) => {
 app.get('/orders/invoices', (req, res) => {
   const SQL = 'SELECT o.oid,o.username,SUM(o.price) as total_amount FROM orders o GROUP BY o.username, o.oid ORDER BY o.oid DESC;';
 
-  db.query(SQL, (err, results) => {
+  db.all(SQL, (err, results) => {
     if (err) {
       console.error('Error fetching invoice:', err);
       res.status(500).send({ error: 'Database query error' });
@@ -271,9 +300,23 @@ app.get('/orders/invoices', (req, res) => {
 app.get('/orderdata', (req, res) => {
   const SQL = 'SELECT MAX(pid) AS pid, SUM(quantity) AS quantity, pname, SUM(price) as price, stock FROM orders GROUP BY pname';
 
-  db.query(SQL, (err, results) => {
+  db.all(SQL, (err, results) => {
     if (err) {
       console.error('Error fetching order:', err);
+      res.status(500).send({ error: 'Database query error' });
+    } else {
+      res.send(results);
+    }
+  });
+});
+
+// Get all products from database
+app.get('/products', (req, res) => {
+  const SQL = 'SELECT * FROM products ORDER BY id';
+
+  db.all(SQL, (err, results) => {
+    if (err) {
+      console.error('Error fetching products:', err);
       res.status(500).send({ error: 'Database query error' });
     } else {
       res.send(results);
