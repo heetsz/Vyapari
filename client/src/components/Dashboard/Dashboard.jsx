@@ -68,21 +68,21 @@ const Dashboard = () => {
 
   useEffect(() => {
 
-    Axios.get('http://localhost:3003/employees/sales')
+    Axios.get('https://vyapari-backend.onrender.com/employees/sales')
       .then((response) => {
         setSales(response.data.sales);
       })
       .catch((error) => console.error('Error fetching sales:', error));
 
     // Fetch employee count
-    Axios.get('http://localhost:3003/employees/employeeCount')
+    Axios.get('https://vyapari-backend.onrender.com/employees/employeeCount')
       .then((response) => {
         setEmployeeCount(response.data.employeeSum);
       })
       .catch((error) => console.error('Error fetching employee count:', error));
 
     // Fetch user count
-    Axios.get('http://localhost:3003/employees/userCount')
+    Axios.get('https://vyapari-backend.onrender.com/employees/userCount')
       .then((response) => {
         setUserCount(response.data.userCount);
       })
@@ -96,19 +96,19 @@ const Dashboard = () => {
     if (activeTab === 'employees') {
       fetchEmployeeData();
     } else if (activeTab === 'invoice') {
-      Axios.get('http://localhost:3003/orders/invoices')
+      Axios.get('https://vyapari-backend.onrender.com/orders/invoices')
         .then((response) => {
           setInvoices(response.data);
         })
         .catch((error) => console.error('Error fetching invoices:', error));
     } else if (activeTab === 'sales') {
-      Axios.get('http://localhost:3003/orderdata')
+      Axios.get('https://vyapari-backend.onrender.com/orderdata')
         .then((response) => {
           setOrders(response.data);
         })
         .catch((error) => console.error('Error fetching orders:', error));
     } else if (activeTab === 'analytics') {
-      Axios.get('http://localhost:3003/orderdata')
+      Axios.get('https://vyapari-backend.onrender.com/orderdata')
         .then((response) => {
           setAnalyticsData(response.data);
         })
@@ -137,7 +137,7 @@ const Dashboard = () => {
 
   const fetchEmployeeData = useCallback(() => {
     // Fetch employees
-    Axios.get('http://localhost:3003/employees')
+    Axios.get('https://vyapari-backend.onrender.com/employees')
       .then((response) => {
         setEmployees(response.data);
         processRoleData(response.data);
@@ -145,7 +145,7 @@ const Dashboard = () => {
       .catch((error) => console.error(error));
 
     // Fetch salary sum
-    Axios.get('http://localhost:3003/employees/salarySum')
+    Axios.get('https://vyapari-backend.onrender.com/employees/salarySum')
       .then((response) => {
         setTotalSalary(response.data.totalSalary);
       })
@@ -179,7 +179,7 @@ const Dashboard = () => {
       return;
     }
 
-    Axios.post('http://localhost:3003/addEmployee', {
+    Axios.post('https://vyapari-backend.onrender.com/addEmployee', {
       empID,
       name,
       phone,
@@ -211,7 +211,7 @@ const Dashboard = () => {
       return;
     }
   
-    Axios.delete(`http://localhost:3003/employees/${empID}`)
+    Axios.delete(`https://vyapari-backend.onrender.com/employees/${empID}`)
       .then((response) => {
         if (response.data.success) {
           // Update local state only after successful deletion
