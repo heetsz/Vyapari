@@ -6,7 +6,7 @@ const cors = require('cors');
 app.use(cors());
 app.use(express.json());
 
-const db = new sqlite3.Database('./plantdb.sqlite', (err) => {
+const db = new sqlite3.Database('./data/plantdb.sqlite', (err) => {
   if (err) {
     console.error('Error connecting to the database:', err);
     process.exit(1); 
